@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "./axios";
 import "./Row.css";
-import YouTube from "react-youtube";
 
-const base_url = "https://image.tmdb.org/t/p/original/";
+const base_url = "https://image.tmdb.org/t/p/";
 
-function Row({ title, fetchUrl, isLargeRow }) {
+function Row({ title, fetchUrl, isLargeRow, onMovieClick }) {
   const [movies, setMovies] = useState([]);
-  const [trailerUrl, setTrailerUrl] = useState("");
-
   const API_KEY = "03bca0445af66966a09681ad2543953f";
 
   useEffect(() => {
@@ -20,38 +17,25 @@ function Row({ title, fetchUrl, isLargeRow }) {
     fetchData();
   }, [fetchUrl]);
 
-  const opts = {
-    height: "390",
-    width: "100%",
-    playerVars: {
-      autoplay: 1,
-    },
-  };
-
   const handleClick = async (movie) => {
-    if (trailerUrl) {
-      setTrailerUrl("");
-    } else {
-      try {
-        const type = isLargeRow ? "tv" : "movie";
-        const videoData = await axios.get(
-          `/${type}/${movie.id}/videos?api_key=${API_KEY}`,
-        );
+    try {
+      const type = movie.first_air_date || isLargeRow ? "tv" : "movie";
+      const videoData = await axios.get(
+        `/${type}/${movie.id}/videos?api_key=${API_KEY}`
+      );
 
-        const trailer = videoData.data.results.find(
-          (vid) =>
-            vid.site === "YouTube" &&
-            (vid.type === "Trailer" || vid.type === "Teaser"),
-        );
+      const trailer = videoData.data.results.find(
+        (vid) => vid.site === "YouTube" && (vid.type === "Trailer" || vid.type === "Teaser")
+      );
 
-        if (trailer) {
-          setTrailerUrl(trailer.key);
-        } else {
-          console.log("No official trailer found on TMDB.");
-        }
-      } catch (error) {
-        console.error("Error fetching trailer from TMDB:", error);
+      if (trailer) {
+        // We "shout" the URL up to the App.js parent
+        onMovieClick(trailer.key);
+      } else {
+        alert("No trailer available for this title.");
       }
+    } catch (error) {
+      console.error("Error fetching trailer:", error);
     }
   };
 
@@ -64,14 +48,16 @@ function Row({ title, fetchUrl, isLargeRow }) {
             key={movie.id}
             onClick={() => handleClick(movie)}
             className={`row__poster ${isLargeRow && "row__posterLarge"}`}
-            src={`${base_url}${
-              isLargeRow ? movie.poster_path : movie.backdrop_path
-            }`}
-            alt={movie.name || movie.title || movie.original_name}
+            src={
+              isLargeRow
+                ? movie.poster_path ? `${base_url}w500${movie.poster_path}` : "/no-image.png"
+                : movie.backdrop_path ? `${base_url}w780${movie.backdrop_path}` : "/no-image.png"
+            }
+            alt={movie.name || movie.title}
           />
         ))}
       </div>
-      {trailerUrl && <YouTube videoId={trailerUrl} opts={opts} />}
+      {/* ❌ DO NOT PUT THE YOUTUBE COMPONENT HERE ❌ */}
     </div>
   );
 }
